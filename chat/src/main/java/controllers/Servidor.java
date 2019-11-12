@@ -1,14 +1,19 @@
 package controllers;
-import model.Mensaje;
 
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+
+import model.Mensaje;
 
 public class Servidor {
 	// a unique ID for each connection
@@ -24,9 +29,9 @@ public class Servidor {
 	// the boolean that will be turned of to stop the servidor
 	private boolean keepGoing;
 
-
 	/*
-	 *  servidor constructor that receive the port to listen to for connection as parameter
+	 * servidor constructor that receive the port to listen to for connection as
+	 * parameter
 	 */
 	public Servidor(int port) {
 		this(port, null);
@@ -46,41 +51,37 @@ public class Servidor {
 	public void start() {
 		keepGoing = true;
 		/* create socket servidor and wait for connection requests */
-		try
-		{
+		try {
 			// the socket used by the servidor
 			ServerSocket serverSocket = new ServerSocket(port);
 
 			// infinite loop to wait for connections
-			while(keepGoing)
-			{
+			while (keepGoing) {
 				// format message saying we are waiting
 				display("Servidor waiting for Clients on port " + port + ".");
 
-				Socket socket = serverSocket.accept();  // accept connection
+				Socket socket = serverSocket.accept(); // accept connection
 				// if I was asked to stop
-				if(!keepGoing)
+				if (!keepGoing)
 					break;
-				ClientThread t = new ClientThread(socket);  // make a thread of it
+				ClientThread t = new ClientThread(socket); // make a thread of it
 				clientsConnected.add(t); // save it in the ArrayList
 				t.start();
 			}
 			// I was asked to stop
 			try {
 				serverSocket.close();
-				for(int i = 0; i < clientsConnected.size(); ++i) {
+				for (int i = 0; i < clientsConnected.size(); ++i) {
 					ClientThread tc = clientsConnected.get(i);
 					try {
 						tc.sInput.close();
 						tc.sOutput.close();
 						tc.socket.close();
-					}
-					catch(IOException ioE) {
+					} catch (IOException ioE) {
 						// not much I can do
 					}
 				}
-			}
-			catch(Exception e) {
+			} catch (Exception e) {
 				display("Exception closing the servidor and clients: " + e);
 			}
 		}
@@ -90,20 +91,21 @@ public class Servidor {
 			display(msg);
 		}
 	}
+
 	/*
 	 * For the GUI to stop the servidor
 	 */
 	public void stop() {
 		keepGoing = false;
-		// connect to myself as Client to exit statement 
+		// connect to myself as Client to exit statement
 		// Socket socket = serverSocket.accept();
 		try {
 			new Socket("localhost", port);
-		}
-		catch(Exception e) {
+		} catch (Exception e) {
 			// nothing I can really do
 		}
 	}
+
 	/*
 	 * Display an event (not a message) to the GUI
 	 */
@@ -111,14 +113,15 @@ public class Servidor {
 		String time = sdf.format(new Date()) + " " + msg;
 		servidorController.appendEvent(time + "\n");
 	}
+
 	/*
-	 *  to broadcast a message to all Clients
+	 * to broadcast a message to all Clients
 	 */
 	private synchronized void broadcast(String message) {
 		// add HH:mm:ss and \n to the message
 		String time = sdf.format(new Date());
 		String messageLf;
-		if (message.contains("WHOISIN") || message.contains("REMOVE")){
+		if (message.contains("WHOISIN") || message.contains("REMOVE")) {
 			messageLf = message;
 		} else {
 			messageLf = time + " " + message + "\n";
@@ -127,10 +130,10 @@ public class Servidor {
 
 		// we loop in reverse order in case we would have to remove a Client
 		// because it has disconnected
-		for(int i = clientsConnected.size(); --i >= 0;) {
+		for (int i = clientsConnected.size(); --i >= 0;) {
 			ClientThread ct = clientsConnected.get(i);
 			// try to write to the Client if it fails remove it from the list
-			if(!ct.writeMsg(messageLf)) {
+			if (!ct.writeMsg(messageLf)) {
 				clientsConnected.remove(i);
 				servidorController.remove(ct.username);
 				display("Disconnected Client " + ct.username + " removed from list.");
@@ -141,10 +144,10 @@ public class Servidor {
 	// for a client who logoff using the LOGOUT message
 	synchronized void remove(int id) {
 		// scan the array list until we found the Id
-		for(int i = 0; i < clientsConnected.size(); ++i) {
+		for (int i = 0; i < clientsConnected.size(); ++i) {
 			ClientThread ct = clientsConnected.get(i);
 			// found it
-			if(ct.id == id) {
+			if (ct.id == id) {
 				servidorController.remove(ct.username);
 				ct.writeMsg(ct.username + ":REMOVE");
 				clientsConnected.remove(i);
@@ -175,23 +178,21 @@ public class Servidor {
 			this.socket = socket;
 			/* Creating both Data Stream */
 			System.out.println("Thread trying to create Object Input/Output Streams");
-			try
-			{
+			try {
 				// create output first
 				sOutput = new ObjectOutputStream(socket.getOutputStream());
-				sInput  = new ObjectInputStream(socket.getInputStream());
+				sInput = new ObjectInputStream(socket.getInputStream());
 				// read the username
 				username = (String) sInput.readObject();
 				servidorController.addUser(username);
 				System.out.println(username);
-				broadcast(username + ":WHOISIN"); //Broadcast user who logged in
+				broadcast(username + ":WHOISIN"); // Broadcast user who logged in
 				writeMsg(username + ":WHOISIN");
-				for(ClientThread client : clientsConnected) {
+				for (ClientThread client : clientsConnected) {
 					writeMsg(client.username + ":WHOISIN");
 				}
 				display(username + " just connected.");
-			}
-			catch (IOException e) {
+			} catch (IOException e) {
 				display("Exception creating new Input/output Streams: " + e);
 				return;
 			}
@@ -206,32 +207,53 @@ public class Servidor {
 		public void run() {
 			// to loop until LOGOUT
 			boolean keepGoing = true;
-			while(keepGoing) {
+			while (keepGoing) {
 				// read a String (which is an object)
 				try {
 					cm = (Mensaje) sInput.readObject();
-				}
-				catch (IOException e) {
+				} catch (IOException e) {
 					display(username + " Exception reading Streams: " + e);
 					break;
-				}
-				catch(ClassNotFoundException e2) {
+				} catch (ClassNotFoundException e2) {
 					break;
 				}
 				// the messaage part of the ChatMessage
 				String message = cm.getMessage();
 
 				// Switch on the type of message receive
-				switch(cm.getType()) {
+				switch (cm.getType()) {
 
-					case Mensaje.MESSAGE:
-						broadcast(username + ": " + message);
-						break;
-					case Mensaje.LOGOUT:
-						display(username + " disconnected with a LOGOUT message.");
-						broadcast(username + ":REMOVE");
-						keepGoing = false;
-						break;
+				case Mensaje.MESSAGE:
+					broadcast(username + ": " + message);
+					break;
+				case Mensaje.FILE:
+					FileInputStream fis = null;
+					BufferedInputStream bis = null;
+					OutputStream os = null;
+
+					System.out.println("File");
+
+					display(cm.getFile().getName());
+
+					try {
+						File archivo = cm.getFile();
+						byte[] ab = new byte[(int) archivo.length()]; // se crea un array de bytes
+						fis = new FileInputStream(archivo);
+						bis = new BufferedInputStream(fis);
+						bis.read(ab, 0, ab.length);
+						os = socket.getOutputStream();
+						os.write(ab, 0, ab.length);
+						os.flush();
+						broadcast(username + ":FILE" + ":" + archivo.getName() + ":" + archivo.length());
+					} catch (IOException e) {
+						display(username + " Exception reading Streams: " + e);
+					}
+					break;
+				case Mensaje.LOGOUT:
+					display(username + " disconnected with a LOGOUT message.");
+					broadcast(username + ":REMOVE");
+					keepGoing = false;
+					break;
 				}
 			}
 			// remove myself from the arrayList containing the list of the
@@ -244,17 +266,21 @@ public class Servidor {
 		private void close() {
 			// try to close the connection
 			try {
-				if(sOutput != null) sOutput.close();
+				if (sOutput != null)
+					sOutput.close();
+			} catch (Exception e) {
 			}
-			catch(Exception e) {}
 			try {
-				if(sInput != null) sInput.close();
+				if (sInput != null)
+					sInput.close();
+			} catch (Exception e) {
 			}
-			catch(Exception e) {};
+			;
 			try {
-				if(socket != null) socket.close();
+				if (socket != null)
+					socket.close();
+			} catch (Exception e) {
 			}
-			catch (Exception e) {}
 		}
 
 		/*
@@ -262,7 +288,7 @@ public class Servidor {
 		 */
 		private boolean writeMsg(String msg) {
 			// if Client is still connected send the message to it
-			if(!socket.isConnected()) {
+			if (!socket.isConnected()) {
 				close();
 				return false;
 			}
@@ -271,7 +297,7 @@ public class Servidor {
 				sOutput.writeObject(msg);
 			}
 			// if an error occurs, do not abort just inform the user
-			catch(IOException e) {
+			catch (IOException e) {
 				display("Error sending message to " + username);
 				display(e.toString());
 			}

@@ -30,6 +30,12 @@
                            </font>
                         </Label>
                         <Label layoutX="14.0" layoutY="26.0" prefHeight="17.0" prefWidth="313.0" text="En linea" textFill="WHITE" />
+                        <Circle fill="WHITE" layoutX="474.0" layoutY="24.0" radius="14.0" stroke="WHITE" strokeType="INSIDE" />
+                        <ImageView fx:id="btnArchivo" fitHeight="24.0" fitWidth="31.0" layoutX="462.0" layoutY="12.0" pickOnBounds="true" preserveRatio="true">
+                           <image>
+                              <Image url="@../images/1486505265-document-file-export-sending-exit-send_81434.png" />
+                           </image>
+                        </ImageView>
                      </children>
                   </Pane>
                   <TextArea fx:id="txtAreaServerMsgs" layoutY="48.0" prefHeight="314.0" prefWidth="502.0" AnchorPane.bottomAnchor="39.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="48.0" />

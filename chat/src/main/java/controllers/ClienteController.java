@@ -1,6 +1,10 @@
 package controllers;
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
@@ -17,10 +21,12 @@ import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.shape.Circle;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import model.Mensaje;
 
@@ -30,6 +36,7 @@ public class ClienteController implements Initializable {
 	private @FXML TextField txtUserMsg;
 	private @FXML Circle btnSend;
 	private @FXML Circle btnLogout;
+	private @FXML ImageView btnArchivo;
 	private Stage stageLocal;
 	private @FXML TextArea txtAreaServerMsgs;
 	private String user;
@@ -51,8 +58,8 @@ public class ClienteController implements Initializable {
 	 */
 	public void login() {
 		port = 1500;
-		server = "192.168.43.44";
-		System.out.println(server);
+		server = "localhost";
+		// System.out.println(server);
 		username = user;
 		// test if we can start the connection to the Servidor
 		// if it failed nothing we can do
@@ -100,6 +107,37 @@ public class ClienteController implements Initializable {
 		if (event.getCode() == KeyCode.ENTER) {
 			sendMessage();
 			event.consume();
+		}
+	}
+
+	public void cerrarVentana() {
+		Mensaje msg = new Mensaje(Mensaje.LOGOUT, "");
+		try {
+			sOutput.writeObject(msg);
+			txtUserMsg.setText("");
+		} catch (IOException e) {
+			display("Exception writing to servidor: " + e);
+		}
+		disconnect();
+	}
+
+	public void sendFile() {
+		System.out.println("Enviar archivo");
+		if (connected) {
+			FileChooser fc = new FileChooser();
+
+			fc.setTitle("Seleccionar archivo");
+
+			// Window stage = null;
+			File f = fc.showOpenDialog(stageLocal);
+
+			Mensaje msg = new Mensaje(Mensaje.FILE, f);
+			try {
+				sOutput.writeObject(msg);
+				txtUserMsg.setText("");
+			} catch (IOException e) {
+				display("Exception writing to servidor: " + e);
+			}
 		}
 	}
 
@@ -230,9 +268,32 @@ public class ClienteController implements Initializable {
 								users.remove(split[0]);
 							}
 						});
+					} else if (split[1].equals("FILE")) {
+						int bytesLeidos;
+						int actual = 0;
+						FileOutputStream fos = null;
+						BufferedOutputStream bos = null;
+
+						byte[] ab = new byte[Integer.parseInt(split[3])];
+						InputStream is = socket.getInputStream();
+						fos = new FileOutputStream(split[2]);
+						bos = new BufferedOutputStream(fos);
+						bytesLeidos = is.read(ab, 0, ab.length);
+						actual = bytesLeidos;
+
+						do {
+							bytesLeidos = is.read(ab, actual, (ab.length - actual));
+							if (bytesLeidos >= 0)
+								actual += bytesLeidos;
+						} while (bytesLeidos > -1);
+
+						bos.write(ab, 0, actual);
+						bos.flush();
+						display("Archivo " + split[2] + " descargado");
 					} else {
 						txtAreaServerMsgs.appendText(msg);
 					}
+
 				} catch (IOException e) {
 					display("Servidor has close the connection");
 					connectionFailed();
@@ -261,6 +322,11 @@ public class ClienteController implements Initializable {
 		this.btnSend.setOnMouseClicked(new EventHandler<MouseEvent>() {
 			public void handle(MouseEvent event) {
 				ClienteController.this.sendMessage();
+			}
+		});
+		this.btnArchivo.setOnMouseClicked(new EventHandler<MouseEvent>() {
+			public void handle(MouseEvent event) {
+				ClienteController.this.sendFile();
 			}
 		});
 	}

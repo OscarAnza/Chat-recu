@@ -22,9 +22,10 @@ public class ChatCliente extends Application {
 		controllerInicio.setPrevStage(primaryStage);
 
 		Scene escenaSesion = new Scene(paneSesion);
-		primaryStage.setResizable(false); // Mover el tamaÃ±o
+		primaryStage.setResizable(false); // Mover el tamaño
 		primaryStage.setScene(escenaSesion); // Subimos la escena
 		primaryStage.show(); // Mostramos la pantalla
+
 	}
 
 	public static void main(String[] args) {
